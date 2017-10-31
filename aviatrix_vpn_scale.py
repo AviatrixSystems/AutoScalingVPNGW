@@ -5,27 +5,9 @@ import boto3
 import uuid
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+import urllib2
 
-CONTROLLER_EIP = '52.66.90.40'
-AVIATRIX_USER = 'admin'
-AVIATRIX_PASS = 'Aviatrix123'
-AVIATRIX_ROLE_APP_ARN = 'arn:aws:iam::521953921376:role/aviatrix-role-app'
 MAX_VPN_USERS_ALLOWED = 3
-
-def role_arn_to_session(**args):
-    """
-    Usage :
-        session = role_arn_to_session(
-            RoleArn='arn:aws:iam::012345678901:role/example-role',
-            RoleSessionName='ExampleSessionName')
-        client = session.client('sqs')
-    """
-    client = boto3.client('sts')
-    response = client.assume_role(**args)
-    return boto3.Session(
-        aws_access_key_id=response['Credentials']['AccessKeyId'],
-        aws_secret_access_key=response['Credentials']['SecretAccessKey'],
-        aws_session_token=response['Credentials']['SessionToken'])
 
 def get_elb_name(elb_dns_name):
     elb_dns_split = elb_dns_name.split("-")
@@ -133,10 +115,7 @@ class AviatrixAPI:
                 print("Unable to create VPC/gateway.")
                 raise
 
-        session = role_arn_to_session(
-            RoleArn=AVIATRIX_ROLE_APP_ARN,
-            RoleSessionName='AutoVPNLaunchSession')
-        client = session.client('ec2', avtx_elb.vpc_region)
+        client = boto3.client('ec2', avtx_elb.vpc_region)
         vpn_gw_subnet = avtx_elb.subnets[0]
         vpn_gw_split_tunnel = avtx_elb.split_tunnel
         auto_vpn_gw_name = "auto-vpn-gw-" + uuid.uuid4().hex[-10:]
@@ -180,6 +159,9 @@ class AviatrixAPI:
 
 
 def lambda_handler(event, context):
+    CONTROLLER_EIP = os.environ.get('CONTROLLER_EIP')
+    AVIATRIX_USER = os.environ.get('AVIATRIX_USER')
+    AVIATRIX_PASS = urllib2.quote(os.environ.get('AVIATRIX_PASS'), '%')
     aviatrix_api= AviatrixAPI(CONTROLLER_EIP, AVIATRIX_USER, AVIATRIX_PASS)
     aviatrix_api.login()
     aviatrix_api.populateAvtxElbs()
