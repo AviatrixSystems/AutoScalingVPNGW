@@ -21,7 +21,8 @@
          "S3BucketParam" : { "default" : "Enter S3 Bucket which has aviatrix_vpn_scale.py." },
          "ControllerPublicIpParam" : { "default" : "Enter public IP of Aviatrix Controller instance." },
          "AviatrixUserParam": { "default" : "Enter a valid Aviatrix Cloud account username." },
-         "AviatrixPassParam": { "default" : "Enter Aviatrix Cloud account password for above username." }
+         "AviatrixPassParam": { "default" : "Enter Aviatrix Cloud account password for above username." },
+         "MaxVPNUserLimitParam" : { "default" : "Enter Maximum VPN Users limit per gateway." }
       }
     }
   },
@@ -35,18 +36,23 @@
     "ControllerPublicIpParam":
       {
         "Type": "String",
-        "Description": "Enter public IP of Aviatrix Controller instance.",
+        "Description": "Make sure it's an elastic IP.",
       },
       "AviatrixUserParam":
       {
         "Type": "String",
-        "Description": "Enter Aviatrix Cloud account username used for backup."
+        "Description": "This username will be used to create session for launching new gateway."
       },
       "AviatrixPassParam":
       {
         "Type": "String",
-        "Description": "Enter Aviatrix Cloud account password used for backup.",
+        "Description": "Enter Aviatrix Cloud account password used for above username.",
         "NoEcho": true
+      },
+      "MaxVPNUserLimitParam":
+      {
+        "Type": "String",
+        "Description": "New VPN gateway will be launched, if number of live VPN users per gateway in VPC exceeds this limit.",
       }
   },
   "Resources" :
@@ -108,14 +114,15 @@
             "Variables": { 
               "CONTROLLER_EIP" : { "Ref" : "ControllerPublicIpParam" },
               "AVIATRIX_USER" : { "Ref" : "AviatrixUserParam" },
-              "AVIATRIX_PASS" : { "Ref" : "AviatrixPassParam" }
+              "AVIATRIX_PASS" : { "Ref" : "AviatrixPassParam" },
+              "MAX_VPN_USERS_PER_GW" : { "Ref" : "MaxVPNUserLimitParam" }
             }
           },
           "FunctionName" : "aviatrix_vpn_scale",
           "Handler" : "aviatrix_vpn_scale.lambda_handler",
           "Role" : {"Fn::GetAtt": [ "AviatrixRoleLambdaVPN", "Arn" ]},
           "Runtime" : "python2.7",
-          "Timeout" : "60",
+          "Timeout" : "300",
        }
     },
     "AviatrixLambdaScheduleRule": {
